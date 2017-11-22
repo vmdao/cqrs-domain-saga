@@ -1,14 +1,15 @@
-const messageBus = require('../messagebus');
-const config = require('../config');
+const config = require('../config'),
+    messageBus = require('../messagebus');
+
 let domain = require('cqrs-domain')({
     domainPath: __dirname,
     eventStore: {
         host: config.mongodb.host,
-        type: 'mongodb', //'mongodb',
+        type: 'mongodb',
         dbName: 'nows',
-        eventsCollectionName: 'events', // optional
-        snapshotsCollectionName: 'snapshots', // optional
-        transactionsCollectionName: 'transactions', // optional
+        eventsCollectionName: 'events',
+        snapshotsCollectionName: 'snapshots',
+        transactionsCollectionName: 'transactions',
     }
 });
 
@@ -16,8 +17,11 @@ domain.defineCommand({
     id: 'id',
     name: 'command',
     aggregateId: 'payload.id',
+    aggregate: 'aggregate.name',
     payload: 'payload',
-    revision: 'head.revision'
+    revision: 'head.revision',
+    meta: 'meta'
+
 })
 
 domain.defineEvent({
@@ -25,23 +29,24 @@ domain.defineEvent({
     id: 'id',
     name: 'event',
     aggregateId: 'payload.id',
+    aggregate: 'aggregate.name',
     payload: 'payload',
-    revision: 'head.revision'
+    revision: 'head.revision',
+    meta: 'meta'
+
 })
 
 domain.init(function (err) {
     if (err) {
         return console.log(err);
     }
-    // on receiving a message (__=command__) from messageBus pass it to 
-    // the domain calling the handle function
+
     messageBus.onCommand(function (cmd) {
         console.log('[DOMAIN][COMMAND] -> received command ' + cmd.command + ' from redis: \n', cmd);
         console.log('[DOMAIN][COMMAND] -> handle command ' + cmd.command);
         domain.handle(cmd);
     });
 
-    // on receiving a message (__=event) from domain pass it to the messageBus
     domain.onEvent(function (evt) {
         console.log('[DOMAIN][EVENT] -> push event ' + evt.event);
         messageBus.emitEvent(evt);

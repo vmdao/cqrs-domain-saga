@@ -1,51 +1,52 @@
-const redis = require('redis');
-var event = redis.createClient(),
-    command = redis.createClient();
+const redis = require('redis'),
+    eventSub = redis.createClient(),
+    eventPub = redis.createClient(),
+    commandSub = redis.createClient(),
+    commandPub = redis.createClient();
 
-var cmdSubscriptions = [],
+let cmdSubscriptions = [],
     evtSubscriptions = [];
 
 // Init Event 
 
-event.on('connect', () => {
-    console.log('[MessageBus][Event] connected')
-});
+[{
+    name: 'eventSub',
+    actor: eventSub
+}, {
+    name: 'eventPub',
+    actor: eventPub
+}, {
+    name: 'commandSub',
+    actor: commandSub
+}, {
+    name: 'commandPub',
+    actor: commandPub
+}].forEach(({
+    name,
+    actor
+}) => {
+    actor.on('connect', () => {
+        console.log('[MessageBus][' + name + '] connected')
+    });
 
-event.on('error', (err) => {
-    console.log('[MessageBus][Event] error', err)
-});
+    actor.on('error', (err) => {
+        console.log('[MessageBus][' + name + '] error', err)
+    });
 
-event.on('warning', (warning) => {
-    console.log('[MessageBus][Event] warning', warning)
-});
+    actor.on('warning', (warning) => {
+        console.log('[MessageBus][' + name + '] warning', warning)
+    });
 
-event.on('end', () => {
-    console.log('[MessageBus][Event] end')
-});
+    actor.on('end', () => {
+        console.log('[MessageBus][' + name + '] end')
+    });
+})
 
-command.on('connect', () => {
-    console.log('[MessageBus][Command] connected')
-});
-
-command.on('error', (err) => {
-    console.log('[MessageBus][Command] error', err)
-});
-
-command.on('warning', (warning) => {
-    console.log('[MessageBus][Command] warning', warning)
-});
-
-command.on('end', () => {
-    console.log('[MessageBus][Command] end')
-});
-
-// Event import
-
-command.on('message', (channel, message) => {
+commandSub.on('message', (channel, message) => {
     let messageObject = JSON.parse(message);
 
     if (channel === 'commands') {
-        console.log('[MessageBus][Command] received ' + messageObject.command + ' from redis:\n', messageObject);
+        console.log('[MessageBus][CommandSub] received ' + messageObject.command + ' from redis:\n', messageObject);
 
         cmdSubscriptions.forEach(function (subscriber) {
             subscriber(messageObject);
@@ -54,14 +55,13 @@ command.on('message', (channel, message) => {
 
 })
 
-event.on('message', (channel, message) => {
+eventSub.on('message', (channel, message) => {
     let messageEvent = JSON.parse(message);
 
     if (channel === 'events') {
-        console.log('[MessageBus][Event] received ' + messageEvent.event + ' from redis: \n', messageEvent);
+        console.log('[MessageBus][EventSub] received ' + messageEvent.event + ' from redis: \n', messageEvent);
 
         evtSubscriptions.forEach(function (subscriber) {
-            console.log(subscriber, 123)
             subscriber(messageEvent);
         });
     }
@@ -71,27 +71,26 @@ module.exports = {
     onCommand: (callback) => {
 
         if (cmdSubscriptions.length === 0) {
-            command.subscribe('commands');
+            commandSub.subscribe('commands');
         }
         cmdSubscriptions.push(callback);
-        console.log('[MessageBus][Command] subscribers: ' + cmdSubscriptions.length);
+        console.log('[MessageBus][CommandSub] subscribers: ' + cmdSubscriptions.length);
     },
     emitCommand: (commandMessage) => {
-        console.log('[MessageBus][Command] publish', commandMessage);
-        command.publish('commands', JSON.stringify(commandMessage));
+        console.log('[MessageBus][CommandPub] publish', commandMessage);
+        commandPub.publish('commands', JSON.stringify(commandMessage));
     },
 
     onEvent: (callback) => {
         if (evtSubscriptions.length === 0) {
-            event.subscribe('events');
+            eventSub.subscribe('events');
         }
         evtSubscriptions.push(callback);
-        console.log('[MessageBus][Event] subscribers: ' + evtSubscriptions.length);
+        console.log('[MessageBus][EventSub] subscribers: ' + evtSubscriptions.length);
     },
 
     emitEvent: (eventMessage) => {
-        console.log('[MessageBus][Event] publish', eventMessage);
-        console.log(typeof evtSubscriptions[0])
-        event.publish('events', JSON.stringify(eventMessage));
+        console.log('[MessageBus][EventPub] publish', eventMessage);
+        eventPub.publish('events', JSON.stringify(eventMessage));
     }
 };

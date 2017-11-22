@@ -16,7 +16,7 @@ const options = {
 }
 //configurate saga
 var saga = require('cqrs-saga')({
-    sagaPath: __dirname ,
+    sagaPath: __dirname + '/domains',
     sagaStore: {
         type: 'mongodb',
         host: 'localhost',
@@ -76,20 +76,23 @@ denormalizer.init(function (err) {
             return console.error(err);
         }
 
+        saga.onCommand(function (cmd) {
+            console.info('[SAGE][COMMAND] ' + cmd.command);
+            messageBus.emitCommand(cmd);
+        })
+
         messageBus.onEvent(function (evt) {
             console.info('\n[SAGE][EVENT] received event ' + evt.event + ' from redis:\n', evt);
             console.info('\n[SAGE][EVENT] -> handle event ' + evt.event);
             denormalizer.handle(evt, (errs) => {
+                console.log('denormalizer.handle')
+
                 if (errs) {
                     console.error(errs);
                 }
             });
         });
 
-        saga.onCommand(function (cmd) {
-            console.info('[SAGE][COMMAND] ' + cmd.command);
-            messageBus.emitCommand(cmd);
-        })
 
         saga.onEventMissing(function (info, evt) {
             console.warn('\n Missed event ' + evt.event + ':');
@@ -98,6 +101,7 @@ denormalizer.init(function (err) {
         });
 
         denormalizer.defaultEventExtension((evt, callback) => {
+            console.log('defaultEventExtension')
             saga.handle(evt, (err) => {
                 callback(err, evt);
             });
