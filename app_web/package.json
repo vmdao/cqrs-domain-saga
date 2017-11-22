@@ -1,0 +1,20 @@
+{
+  "name": "app_web",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node app.js",
+    "test": "mocha --reporter list --growl test/integration/MessageBus.test.js"
+  },
+  "author": "“Minh <“vuminhdao@outlook.com”> (“vuminhdao.info”)",
+  "license": "ISC",
+  "dependencies": {
+    "cqrs-eventdenormalizer": "^1.12.5",
+    "mongodb": "^2.2.33",
+    "redis": "^2.8.0"
+  },
+  "devDependencies": {
+    "chai": "^4.1.2"
+  }
+}
